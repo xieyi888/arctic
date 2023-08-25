@@ -259,6 +259,16 @@ public class InternalRowFileAppenderFactory implements FileAppenderFactory<Inter
               .equalityFieldIds(equalityFieldIds)
               .withKeyMetadata(file.keyMetadata())
               .buildEqualityWriter();
+        case ORC:
+          return ORC.writeDeletes(file.encryptingOutputFile())
+              .createWriterFunc(SparkOrcWriter::new)
+              .overwrite()
+              .rowSchema(eqDeleteRowSchema)
+              .withSpec(spec)
+              .withPartition(partition)
+              .equalityFieldIds(equalityFieldIds)
+              .withKeyMetadata(file.keyMetadata())
+              .buildEqualityWriter();
 
         default:
           throw new UnsupportedOperationException(
@@ -302,6 +312,15 @@ public class InternalRowFileAppenderFactory implements FileAppenderFactory<Inter
         case AVRO:
           return Avro.writeDeletes(file.encryptingOutputFile())
               .createWriterFunc(ignored -> new SparkAvroWriter(lazyPosDeleteSparkType()))
+              .overwrite()
+              .rowSchema(posDeleteRowSchema)
+              .withSpec(spec)
+              .withPartition(partition)
+              .withKeyMetadata(file.keyMetadata())
+              .buildPositionWriter();
+        case ORC:
+          return ORC.writeDeletes(file.encryptingOutputFile())
+              .createWriterFunc(SparkOrcWriter::new)
               .overwrite()
               .rowSchema(posDeleteRowSchema)
               .withSpec(spec)

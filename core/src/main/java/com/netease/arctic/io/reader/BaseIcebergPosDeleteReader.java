@@ -25,9 +25,12 @@ import org.apache.iceberg.MetadataColumns;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.StructLike;
 import org.apache.iceberg.data.Record;
+import org.apache.iceberg.data.orc.GenericOrcReader;
 import org.apache.iceberg.data.parquet.GenericParquetReaders;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.InputFile;
+import org.apache.iceberg.orc.ORC;
+import org.apache.iceberg.orc.ORC.ReadBuilder;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
@@ -77,6 +80,13 @@ public class BaseIcebergPosDeleteReader {
             .createReaderFunc(fileSchema -> GenericParquetReaders.buildReader(POS_DELETE_SCHEMA, fileSchema));
 
         return fileIO.doAs(builder::build);
+
+      case ORC:
+        ReadBuilder orcBuilder = ORC.read(input)
+            .project(POS_DELETE_SCHEMA)
+            .createReaderFunc(fileSchema -> GenericOrcReader.buildReader(POS_DELETE_SCHEMA, fileSchema));
+        return fileIO.doAs(orcBuilder::build);
+
       default:
         throw new UnsupportedOperationException(String.format(
             "Cannot read deletes, %s is not a supported format: %s", deleteFile.format().name(), deleteFile.path()));

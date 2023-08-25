@@ -274,7 +274,16 @@ public class InternalRowFileAppenderFactory implements FileAppenderFactory<Inter
               .equalityFieldIds(equalityFieldIds)
               .withKeyMetadata(file.keyMetadata())
               .buildEqualityWriter();
-
+        case ORC:
+          return ORC.writeDeletes(file.encryptingOutputFile())
+              .createWriterFunc(SparkOrcWriter::new)
+              .overwrite()
+              .rowSchema(eqDeleteRowSchema)
+              .withSpec(spec)
+              .withPartition(partition)
+              .equalityFieldIds(equalityFieldIds)
+              .withKeyMetadata(file.keyMetadata())
+              .buildEqualityWriter();
         default:
           throw new UnsupportedOperationException(
               "Cannot write equality-deletes for unsupported file format: " + format);
@@ -323,7 +332,15 @@ public class InternalRowFileAppenderFactory implements FileAppenderFactory<Inter
               .withPartition(partition)
               .withKeyMetadata(file.keyMetadata())
               .buildPositionWriter();
-
+        case ORC:
+          return ORC.writeDeletes(file.encryptingOutputFile())
+              .createWriterFunc(SparkOrcWriter::new)
+              .overwrite()
+              .rowSchema(posDeleteRowSchema)
+              .withSpec(spec)
+              .withPartition(partition)
+              .withKeyMetadata(file.keyMetadata())
+              .buildPositionWriter();
         default:
           throw new UnsupportedOperationException(
               "Cannot write pos-deletes for unsupported file format: " + format);

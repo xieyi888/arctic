@@ -31,10 +31,13 @@ import org.apache.iceberg.StructLike;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.mapping.NameMappingParser;
+import org.apache.iceberg.orc.ORC;
+import org.apache.iceberg.orc.OrcRowReader;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.parquet.ParquetValueReader;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.util.Filter;
+import org.apache.orc.TypeDescription;
 import org.apache.parquet.schema.MessageType;
 
 import java.util.Map;
@@ -122,6 +125,9 @@ public abstract class AbstractIcebergDataReader<T> {
         case PARQUET:
           iter = newParquetIterable(task, schema, idToConstant);
           break;
+        case ORC:
+          iter = newOrcIterable(task, schema, idToConstant);
+          break;
         default:
           throw new UnsupportedOperationException(
               "Cannot read unknown format: " + task.file().format());
@@ -136,7 +142,7 @@ public abstract class AbstractIcebergDataReader<T> {
     Parquet.ReadBuilder builder = Parquet.read(fileIO.newInputFile(task.file().path().toString()))
         .split(task.start(), task.length())
         .project(schema)
-        .createReaderFunc(getNewReaderFunction(schema, idToConstant))
+        .createReaderFunc(getParquetReaderFunction(schema, idToConstant))
         .filter(task.residual())
         .caseSensitive(caseSensitive);
 
@@ -150,7 +156,28 @@ public abstract class AbstractIcebergDataReader<T> {
     return fileIO.doAs(builder::build);
   }
 
-  protected abstract Function<MessageType, ParquetValueReader<?>> getNewReaderFunction(
+  protected CloseableIterable<T> newOrcIterable(
+      FileScanTask task, Schema schema, Map<Integer, ?> idToConstant) {
+    ORC.ReadBuilder builder =
+        ORC.read(fileIO.newInputFile(task.file().path().toString()))
+            .split(task.start(), task.length())
+            .project(schema)
+            .createReaderFunc(getOrcReaderFunction(schema, idToConstant))
+            .filter(task.residual())
+            .caseSensitive(caseSensitive);
+
+    if (nameMapping != null) {
+      builder.withNameMapping(NameMappingParser.fromJson(nameMapping));
+    }
+
+    return fileIO.doAs(builder::build);
+  }
+
+  protected abstract Function<MessageType, ParquetValueReader<?>> getParquetReaderFunction(
+      Schema projectedSchema,
+      Map<Integer, ?> idToConstant);
+
+  protected abstract Function<TypeDescription, OrcRowReader<?>> getOrcReaderFunction(
       Schema projectedSchema,
       Map<Integer, ?> idToConstant);
 
