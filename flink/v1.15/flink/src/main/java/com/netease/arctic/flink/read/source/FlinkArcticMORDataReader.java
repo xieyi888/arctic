@@ -31,8 +31,11 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.StructLike;
 import org.apache.iceberg.flink.FlinkSchemaUtil;
 import org.apache.iceberg.flink.RowDataWrapper;
+import org.apache.iceberg.flink.data.FlinkOrcReader;
+import org.apache.iceberg.orc.OrcRowReader;
 import org.apache.iceberg.parquet.ParquetValueReader;
 import org.apache.iceberg.types.Type;
+import org.apache.orc.TypeDescription;
 import org.apache.parquet.schema.MessageType;
 
 import java.util.Map;
@@ -60,9 +63,7 @@ public class FlinkArcticMORDataReader extends AbstractAdaptHiveArcticDataReader<
   }
 
   @Override
-  protected Function<MessageType,
-      ParquetValueReader<?>> getNewReaderFunction(
-      Schema projectSchema,
+  protected Function<MessageType, ParquetValueReader<?>> getParquetReaderFunction(Schema projectSchema,
       Map<Integer, ?> idToConstant) {
     return
         fileSchema ->
@@ -70,6 +71,12 @@ public class FlinkArcticMORDataReader extends AbstractAdaptHiveArcticDataReader<
                 projectSchema,
                 fileSchema,
                 idToConstant);
+  }
+
+  @Override
+  protected Function<TypeDescription, OrcRowReader<?>> getOrcReaderFunction(Schema projectedSchema,
+      Map<Integer, ?> idToConstant) {
+    return readOrcSchema -> new FlinkOrcReader(projectedSchema, readOrcSchema, idToConstant);
   }
 
   @Override
